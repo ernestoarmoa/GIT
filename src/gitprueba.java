@@ -15,7 +15,7 @@ public class gitprueba {
      */
     public static void main(String[] args) {
         // TODO code application logic here
-        System.out.print("HOLA ERNESTO ARMOA ESTO ES GIT");
+        System.out.print("HOLA ERNESTO ARMOA");
     }
     
 }
