@@ -1,0 +1,77 @@
+package sifen.internal.request;
+
+import sifen.core.SifenConfig;
+import sifen.core.exceptions.SifenException;
+import sifen.internal.SOAPResponse;
+import sifen.internal.helpers.SoapHelper;
+import sifen.internal.response.BaseResponse;
+import sifen.internal.util.ResponseUtil;
+import sifen.internal.Constants;
+import sifen.internal.util.SifenExceptionUtil;
+import sifen.internal.response.SifenObjectFactory;
+import sifen.core.beans.response.RespuestaConsultaDE;
+import org.w3c.dom.Node;
+
+import javax.xml.namespace.QName;
+import javax.xml.soap.SOAPBody;
+import javax.xml.soap.SOAPBodyElement;
+import javax.xml.soap.SOAPException;
+import javax.xml.soap.SOAPMessage;
+import java.nio.charset.StandardCharsets;
+import java.util.logging.Logger;
+
+/**
+ * Clase encargada de la Consulta de Documentos Electrónicos.
+ */
+public class ReqConsDe extends BaseRequest {
+    private String dCDC;
+    private final static Logger logger = Logger.getLogger(ReqConsDe.class.toString());
+
+    public ReqConsDe(long dId, SifenConfig sifenConfig) {
+        super(dId, sifenConfig);
+    }
+
+    @Override
+    SOAPMessage setupSoapMessage() throws SifenException {
+        try {
+            // Main Element
+            SOAPMessage message = SoapHelper.createSoapMessage();
+            SOAPBody soapBody = message.getSOAPBody();
+            SOAPBodyElement rEnviConsDeRequest = soapBody.addBodyElement(new QName(Constants.SIFEN_NS_URI, "rEnviConsDeRequest"));
+
+            // Elements
+            rEnviConsDeRequest.addChildElement("dId").setTextContent(String.valueOf(this.getdId()));
+            rEnviConsDeRequest.addChildElement("dCDC").setTextContent(this.dCDC);
+
+            return message;
+        } catch (SOAPException e) {
+            throw SifenExceptionUtil.requestPreparationError("Ocurrió un error al preparar el cuerpo de la petición SOAP", e);
+        }
+    }
+
+    @Override
+    BaseResponse processResponse(SOAPResponse soapResponse) throws SifenException {
+        Node rEnviConsDe = null;
+        String rawResponse = null;
+        try {
+            SOAPMessage soapMessage = ResponseUtil.parseSoapMessage(soapResponse.getSoapResponse());
+            rEnviConsDe = ResponseUtil.getMainNode(soapMessage, "rEnviConsDeResponse");
+            rawResponse = ResponseUtil.getXmlFromMessage(soapMessage, false);
+        } catch (SifenException e) {
+            logger.warning(e.getMessage());
+        }
+
+        RespuestaConsultaDE respuestaConsultaDE = new RespuestaConsultaDE();
+        if (rEnviConsDe != null) {
+            respuestaConsultaDE = SifenObjectFactory.getFromNode(rEnviConsDe, RespuestaConsultaDE.class);
+        }
+
+        respuestaConsultaDE.setCodigoEstado(soapResponse.getStatus());
+        respuestaConsultaDE.setRespuestaBruta(rawResponse != null ? rawResponse : new String(soapResponse.getRawData(), StandardCharsets.UTF_8));
+        return respuestaConsultaDE;
+    }
+
+    public void setdCDC(String dCDC) {
+        this.dCDC = dCDC;
+    }
+}
